@@ -47,7 +47,7 @@ export function DeckCard({ deck, copy, onPurchase }: DeckCardProps) {
       </header>
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        <pre className={`h-full overflow-hidden whitespace-pre-wrap p-5 font-mono text-sm leading-6 text-muted-foreground ${isPremium ? "select-none blur-[5px]" : "overflow-y-auto"}`} aria-hidden={isPremium}>
+        <pre className={`h-full overflow-hidden whitespace-pre-wrap bg-black p-5 font-mono text-sm leading-6 text-white ${isPremium ? "select-none blur-[5px]" : "overflow-y-auto"}`} aria-hidden={isPremium}>
           {deck.list}
         </pre>
         {isPremium ? (
