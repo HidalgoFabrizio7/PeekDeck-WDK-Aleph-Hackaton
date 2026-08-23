@@ -1,20 +1,37 @@
 "use client";
 
-import { ArrowDown, Layers3, Plus, Sparkles } from "lucide-react";
+import { ArrowDown, Layers3, LogOut, Plus, Sparkles, UserRound } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DeckCarousel } from "@/components/deck-carousel";
 import { PaymentDialog } from "@/components/payment-dialog";
 import { gameCategories, type Deck, type Language } from "@/lib/decks";
+import { createClient } from "@/lib/supabase/client";
 import { translations } from "@/lib/translations";
 
-export function PeekDeckApp() {
+type PeekDeckAppProps = { userEmail: string | null };
+
+export function PeekDeckApp({ userEmail }: PeekDeckAppProps) {
+  const router = useRouter();
   const [language, setLanguage] = useState<Language>("es");
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const copy = translations[language];
 
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
+
+  async function signOut() {
+    await createClient().auth.signOut();
+    router.push("/");
+    router.refresh();
+  }
+
+  const visibleCategories = selectedCategory
+    ? gameCategories.filter((category) => category.id === selectedCategory)
+    : gameCategories;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -36,7 +53,23 @@ export function PeekDeckApp() {
                 </button>
               ))}
             </div>
-            <button type="button" className="hidden h-10 items-center gap-2 rounded-lg bg-foreground px-4 text-sm font-bold text-background hover:opacity-90 sm:inline-flex">
+            <Link href={userEmail ? "/" : "/auth/login"} onClick={userEmail ? signOut : undefined} className="flex size-10 items-center justify-center rounded-lg border border-border bg-card sm:hidden" aria-label={userEmail ? copy.signOut : copy.login}>
+              {userEmail ? <LogOut aria-hidden="true" className="size-4" /> : <UserRound aria-hidden="true" className="size-4" />}
+            </Link>
+            {userEmail ? (
+              <div className="hidden items-center gap-2 md:flex">
+                <span className="max-w-36 truncate text-xs text-muted-foreground">{userEmail}</span>
+                <button type="button" onClick={signOut} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-bold hover:bg-muted" aria-label={copy.signOut}>
+                  <LogOut aria-hidden="true" className="size-4" />{copy.signOut}
+                </button>
+              </div>
+            ) : (
+              <div className="hidden items-center gap-2 sm:flex">
+                <Link href="/auth/login" className="inline-flex h-10 items-center rounded-lg px-3 text-sm font-bold text-muted-foreground hover:text-foreground">{copy.login}</Link>
+                <Link href="/auth/sign-up" className="inline-flex h-10 items-center rounded-lg bg-primary px-3 text-sm font-bold text-primary-foreground">{copy.signUp}</Link>
+              </div>
+            )}
+            <button type="button" className="hidden h-10 items-center gap-2 rounded-lg bg-foreground px-4 text-sm font-bold text-background hover:opacity-90 lg:inline-flex">
               <Plus aria-hidden="true" className="size-4" />{copy.publish}
             </button>
           </div>
@@ -73,7 +106,16 @@ export function PeekDeckApp() {
             <p className="max-w-xl text-pretty text-sm leading-6 text-muted-foreground sm:text-base">{copy.freshDescription}</p>
           </div>
           <div className="flex flex-col gap-14">
-            {gameCategories.map((category) => <DeckCarousel key={category.id} category={category} copy={copy} onPurchase={setSelectedDeck} />)}
+            {visibleCategories.map((category) => (
+              <DeckCarousel
+                key={category.id}
+                category={category}
+                copy={copy}
+                onPurchase={setSelectedDeck}
+                selected={selectedCategory === category.id}
+                onToggle={() => setSelectedCategory((current) => current === category.id ? null : category.id)}
+              />
+            ))}
           </div>
         </section>
       </main>
