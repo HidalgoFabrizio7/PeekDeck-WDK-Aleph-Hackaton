@@ -6,17 +6,19 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DeckCarousel } from "@/components/deck-carousel";
 import { PaymentDialog } from "@/components/payment-dialog";
-import { gameCategories, type Deck, type Language } from "@/lib/decks";
+import { PublishDeckDialog } from "@/components/publish-deck-dialog";
+import { gameCategories, type Deck, type GameCategory, type Language } from "@/lib/decks";
 import { createClient } from "@/lib/supabase/client";
 import { translations } from "@/lib/translations";
 
-type PeekDeckAppProps = { userEmail: string | null };
+type PeekDeckAppProps = { userEmail: string | null; publishedDecks: Array<{ id: string; category_id: string; name: string; author: string; format: string; cost: number | string; list: string; likes: number }> };
 
-export function PeekDeckApp({ userEmail }: PeekDeckAppProps) {
+export function PeekDeckApp({ userEmail, publishedDecks }: PeekDeckAppProps) {
   const router = useRouter();
   const [language, setLanguage] = useState<Language>("es");
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [publishOpen, setPublishOpen] = useState(false);
   const copy = translations[language];
 
   useEffect(() => {
@@ -29,9 +31,26 @@ export function PeekDeckApp({ userEmail }: PeekDeckAppProps) {
     router.refresh();
   }
 
+  const categories: GameCategory[] = gameCategories.map((category) => ({
+    ...category,
+    decks: [
+      ...publishedDecks.filter((deck) => deck.category_id === category.id).map((deck) => ({
+        id: deck.id,
+        name: deck.name,
+        creator: deck.author,
+        format: deck.format,
+        wins: deck.likes,
+        cards: deck.list.split("\n").filter(Boolean).length,
+        list: deck.list,
+        ...(Number(deck.cost) > 0 ? { price: Number(deck.cost) } : {}),
+      })),
+      ...category.decks,
+    ],
+  }));
+
   const visibleCategories = selectedCategory
-    ? gameCategories.filter((category) => category.id === selectedCategory)
-    : gameCategories;
+    ? categories.filter((category) => category.id === selectedCategory)
+    : categories;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -53,6 +72,7 @@ export function PeekDeckApp({ userEmail }: PeekDeckAppProps) {
                 </button>
               ))}
             </div>
+            <button type="button" onClick={() => setPublishOpen(true)} className="flex size-10 items-center justify-center rounded-lg bg-foreground text-background lg:hidden" aria-label={copy.publish}><Plus aria-hidden="true" className="size-4" /></button>
             <Link href={userEmail ? "/" : "/auth/login"} onClick={userEmail ? signOut : undefined} className="flex size-10 items-center justify-center rounded-lg border border-border bg-card sm:hidden" aria-label={userEmail ? copy.signOut : copy.login}>
               {userEmail ? <LogOut aria-hidden="true" className="size-4" /> : <UserRound aria-hidden="true" className="size-4" />}
             </Link>
@@ -69,7 +89,7 @@ export function PeekDeckApp({ userEmail }: PeekDeckAppProps) {
                 <Link href="/auth/sign-up" className="inline-flex h-10 items-center rounded-lg bg-primary px-3 text-sm font-bold text-primary-foreground">{copy.signUp}</Link>
               </div>
             )}
-            <button type="button" className="hidden h-10 items-center gap-2 rounded-lg bg-foreground px-4 text-sm font-bold text-background hover:opacity-90 lg:inline-flex">
+            <button type="button" onClick={() => setPublishOpen(true)} className="hidden h-10 items-center gap-2 rounded-lg bg-foreground px-4 text-sm font-bold text-background hover:opacity-90 lg:inline-flex">
               <Plus aria-hidden="true" className="size-4" />{copy.publish}
             </button>
           </div>
@@ -126,6 +146,7 @@ export function PeekDeckApp({ userEmail }: PeekDeckAppProps) {
         </div>
       </footer>
       <PaymentDialog deck={selectedDeck} copy={copy} onClose={() => setSelectedDeck(null)} />
+      <PublishDeckDialog open={publishOpen} userEmail={userEmail} onClose={() => setPublishOpen(false)} onPublished={() => router.refresh()} />
     </div>
   );
 }
